@@ -67,17 +67,23 @@ defmodule Oban.Queue.Engine do
 
   @doc false
   def init(%Config{} = conf, [_ | _] = opts) do
-    conf.engine.init(conf, opts)
+    with_span(:init, conf, fn ->
+      conf.engine.init(conf, opts)
+    end)
   end
 
   @doc false
   def refresh(%Config{} = conf, %{} = meta) do
-    conf.engine.refresh(conf, meta)
+    with_span(:refresh, conf, fn ->
+      conf.engine.refresh(conf, meta)
+    end)
   end
 
   @doc false
   def put_meta(%Config{} = conf, %{} = meta, key, value) when is_atom(key) do
-    conf.engine.put_meta(conf, meta, key, value)
+    with_span(:put_meta, conf, fn ->
+      conf.engine.put_meta(conf, meta, key, value)
+    end)
   end
 
   @doc false
@@ -127,14 +133,14 @@ defmodule Oban.Queue.Engine do
     end)
   end
 
-  defp with_span(event, %Config{} = conf, additional_meta \\ %{}, cb) do
+  defp with_span(event, %Config{} = conf, additional_meta \\ %{}, fun) do
     tele_meta =
       additional_meta
       |> Map.put(:conf, conf)
       |> Map.put(:engine, conf.engine)
 
     :telemetry.span([:oban, :engine, event], tele_meta, fn ->
-      {cb.(), tele_meta}
+      {fun.(), tele_meta}
     end)
   end
 end
